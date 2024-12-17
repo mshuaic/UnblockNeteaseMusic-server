@@ -21,13 +21,10 @@ const logger = logScope('provider/match');
 const isHttpResponseOk = (code) => code >= 200 && code <= 299;
 
 /** @type {Map<string, string>} */
-const headerReferer = new Map([
-	['bilivideo.com', 'https://www.bilibili.com/'],
-	['yt-download.org', 'https://www.yt-download.org/'],
-]);
+const headerReferer = new Map([['bilivideo.com', 'https://www.bilibili.com/']]);
 
 /**
- * @typedef {{ size: number, br: number | null, url: string | null, md5: string | null }} AudioData
+ * @typedef {{ size: number, br: number | null, url: string | null, md5: string | null, source: string }} AudioData
  */
 
 /**
@@ -52,7 +49,10 @@ async function getAudioFromSource(source, info) {
 		);
 
 	logger.debug({ source, info }, 'The audio matched!');
-	return song;
+	return {
+		...song,
+		source,
+	};
 }
 
 async function match(id, source, data) {
@@ -205,8 +205,6 @@ async function check(url) {
 		// Set the MD5 info of this song.
 		if (isHost('126.net'))
 			song.md5 = song.url.split('/').slice(-1)[0].replace(/\..*/g, '');
-		if (isHost('kuwo.cn') && song.br <= 320000)
-			song.md5 = headers['etag'].replace(/"/g, '');
 		if (isHost('qq.com')) song.md5 = headers['server-md5'];
 
 		// Set the size info of this song.
@@ -217,10 +215,7 @@ async function check(url) {
 			) || 0;
 
 		// Check if the Content-Length equals 8192.
-		if (
-			!isHost('yt-download.org') &&
-			headers['content-length'] !== '8192'
-		) {
+		if (headers['content-length'] !== '8192') {
 			// I'm not sure how to describe this.
 			// Seems like not important.
 			return Promise.reject();
